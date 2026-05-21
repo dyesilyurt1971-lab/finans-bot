@@ -1,19 +1,23 @@
 import requests
 from bs4 import BeautifulSoup
 from datetime import datetime
-import schedule
-import time
+
+from telegram import Update
+from telegram.ext import (
+    ApplicationBuilder,
+    MessageHandler,
+    ContextTypes,
+    filters
+)
 
 # =========================================
-# TELEGRAM BİLGİLERİ
+# TELEGRAM TOKEN
 # =========================================
 
-TOKEN = "8660704753:AAHExzBOBoLA5iBWeg0I-9CNZ-7_rhIRLMM"
-
-CHAT_ID = "1178067113"
+TOKEN = "8809811334:AAFTDNaYeMz5IfgO087-25lhxgkuv7bEefk"
 
 # =========================================
-# FİNANS RAPORU FONKSİYONU
+# FİNANS RAPORU
 # =========================================
 
 def finans_raporu():
@@ -54,7 +58,7 @@ def finans_raporu():
     except:
         mesaj += "💶 Euro alınamadı\n"
 
-    # GRAM ALTIN
+    # ALTIN
     try:
         gram = soup.select_one(
             '[data-socket-key="gram-altin"]'
@@ -64,17 +68,6 @@ def finans_raporu():
 
     except:
         mesaj += "🥇 Gram Altın alınamadı\n"
-
-    # ONS ALTIN
-    try:
-        ons = soup.select_one(
-            '[data-socket-key="ons"]'
-        ).text.strip()
-
-        mesaj += f"🌍 Ons Altın: {ons}\n"
-
-    except:
-        mesaj += "🌍 Ons Altın alınamadı\n"
 
     # GÜMÜŞ
     try:
@@ -89,76 +82,34 @@ def finans_raporu():
 
     mesaj += f"\n⏰ {datetime.now().strftime('%d.%m.%Y %H:%M:%S')}"
 
-    print("\nMesaj:\n")
-    print(mesaj)
-
-    # =========================================
-    # TELEGRAM GÖNDER
-    # =========================================
-
-    telegram_url = f"https://api.telegram.org/bot{TOKEN}/sendMessage"
-
-    data = {
-        "chat_id": CHAT_ID,
-        "text": mesaj
-    }
-
-    response = requests.post(
-        telegram_url,
-        data=data
-    )
-
-    print("\nTelegram mesajı gönderildi.")
+    return mesaj
 
 # =========================================
-# İLK AÇILIŞTA MANUEL ÇALIŞTIR
+# TELEGRAM MESAJ KONTROL
 # =========================================
 
-print("Program başladı.")
-print("İlk manuel finans raporu gönderiliyor...")
+async def mesaj_kontrol(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
-finans_raporu()
+    gelen_mesaj = update.message.text.lower()
 
-# =========================================
-# OTOMATİK SAATLER
-# =========================================
+    print(f"Gelen mesaj: {gelen_mesaj}")
 
-saatler = [
-    "10:00",
-    "11:00",
-    "12:00",
-    "13:00",
-    "14:00",
-    "15:00",
-    "16:00",
-    "17:00",
-    "18:00",
-    "19:00",
-    "20:00",
-    "21:00",
-    "22:00",
-    "23:00"
-]
+    if gelen_mesaj == "finans":
+
+        mesaj = finans_raporu()
+
+        await update.message.reply_text(mesaj)
 
 # =========================================
-# GÖREVLERİ EKLE
+# BOT BAŞLAT
 # =========================================
 
-for saat in saatler:
+print("Bot çalışıyor...")
 
-    schedule.every().day.at(saat).do(finans_raporu)
+app = ApplicationBuilder().token(TOKEN).build()
 
-    print(f"Görev eklendi: {saat}")
+app.add_handler(
+    MessageHandler(filters.TEXT, mesaj_kontrol)
+)
 
-print("\nOtomatik finans botu çalışıyor...")
-print("Saat başı Telegram mesajı gönderecek.")
-
-# =========================================
-# SÜREKLİ ÇALIŞ
-# =========================================
-
-while True:
-
-    schedule.run_pending()
-
-    time.sleep(30)
+app.run_polling()
